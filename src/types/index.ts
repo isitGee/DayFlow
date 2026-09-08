@@ -86,6 +86,7 @@ export interface UserSettings {
   theme: 'system' | 'light' | 'dark';
   planningPreference: 'manual' | 'assisted' | 'automatic';
   pomodoro: { work: number; break: number; enabled: boolean };
+  notificationsEnabled: boolean;
 }
 
 export interface Workload {

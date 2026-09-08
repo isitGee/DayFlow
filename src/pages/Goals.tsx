@@ -1,35 +1,13 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { Plus, Target } from 'lucide-react';
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import type { Goal, GoalPeriod } from '../types';
+import { useGoalStore } from '../store/goalStore';
 import { Progress } from '../components/ui/Progress';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { Badge } from '../components/ui/Badge';
-import { uid } from '../lib/utils';
-import { DEMO_GOALS } from '../lib/demoData';
-
-interface GoalStoreState {
-  goals: Goal[];
-  addGoal: (g: Omit<Goal, 'id' | 'progress' | 'linkedTaskIds'>) => void;
-  updateProgress: (id: string, progress: number) => void;
-  deleteGoal: (id: string) => void;
-}
-
-const useGoalStore = create<GoalStoreState>()(
-  persist(
-    (set) => ({
-      goals: DEMO_GOALS,
-      addGoal: (g) => set((s) => ({ goals: [...s.goals, { ...g, id: uid('goal'), progress: 0, linkedTaskIds: [] }] })),
-      updateProgress: (id, progress) => set((s) => ({ goals: s.goals.map((g) => (g.id === id ? { ...g, progress } : g)) })),
-      deleteGoal: (id) => set((s) => ({ goals: s.goals.filter((g) => g.id !== id) })),
-    }),
-    { name: 'dayflow-goals-store' }
-  )
-);
 
 const PERIOD_LABEL: Record<GoalPeriod, string> = { daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly' };
 

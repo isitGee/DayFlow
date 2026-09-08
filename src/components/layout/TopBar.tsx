@@ -1,7 +1,8 @@
 import { useLocation } from 'react-router-dom';
-import { Bell, Plus, Search } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { useUIStore } from '../../store/uiStore';
+import { NotificationBell } from './NotificationBell';
 
 const TITLES: Record<string, string> = {
   '/app/today': 'Today',
@@ -40,9 +41,7 @@ export function TopBar() {
         <Button variant="primary" size="sm" onClick={() => setQuickAddOpen(true)}>
           <Plus className="h-4 w-4" /> Quick add
         </Button>
-        <Button variant="ghost" size="icon" aria-label="Notifications">
-          <Bell className="h-[18px] w-[18px]" />
-        </Button>
+        <NotificationBell />
       </div>
     </header>
   );

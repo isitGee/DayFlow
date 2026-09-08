@@ -45,12 +45,19 @@ export function PrioritiesList({ tasks }: { tasks: Task[] }) {
         <div
           key={task.id}
           draggable
-          onDragStart={() => setDragId(task.id)}
+          onDragStart={(e) => {
+            setDragId(task.id);
+            e.dataTransfer.setData('text/dayflow-task-id', task.id);
+            e.dataTransfer.effectAllowed = 'move';
+          }}
           onDragOver={(e) => {
             e.preventDefault();
             setOverId(task.id);
           }}
-          onDrop={() => handleDrop(task.id)}
+          onDrop={(e) => {
+            e.preventDefault();
+            handleDrop(task.id);
+          }}
           className={cn('rounded-xl transition-shadow', overId === task.id && dragId !== task.id && 'ring-2 ring-accent-400')}
         >
           <TaskCard task={task} draggableHandle />

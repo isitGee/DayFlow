@@ -124,6 +124,30 @@ export default function Settings() {
         )}
       </Section>
 
+      <Section title="Notifications">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-ink-muted">Browser notifications</p>
+            <p className="text-xs text-ink-faint">Upcoming tasks, task start times, and overdue items.</p>
+          </div>
+          <button
+            onClick={async () => {
+              if (!settings.notificationsEnabled && typeof Notification !== 'undefined') {
+                const perm = await Notification.requestPermission();
+                if (perm !== 'granted') {
+                  pushToast({ message: 'Notifications were blocked in your browser settings.' });
+                  return;
+                }
+              }
+              updateSettings({ notificationsEnabled: !settings.notificationsEnabled });
+            }}
+            className={cn('h-6 w-11 shrink-0 rounded-full transition-colors', settings.notificationsEnabled ? 'bg-accent-600' : 'bg-surface-sunken')}
+          >
+            <span className={cn('block h-5 w-5 translate-x-0.5 rounded-full bg-white shadow transition-transform', settings.notificationsEnabled && 'translate-x-5')} />
+          </button>
+        </div>
+      </Section>
+
       <Section title="Demo data">
         <p className="mb-3 text-sm text-ink-muted">
           DAYFLOW is running in local demo mode — everything is stored in your browser. Reset if things get messy.

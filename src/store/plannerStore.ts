@@ -16,6 +16,7 @@ const defaultSettings: UserSettings = {
   theme: 'system',
   planningPreference: 'assisted',
   pomodoro: { work: 25, break: 5, enabled: false },
+  notificationsEnabled: false,
 };
 
 export const usePlannerStore = create<PlannerState>()(

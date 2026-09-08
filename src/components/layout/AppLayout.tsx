@@ -10,27 +10,35 @@ import { CommandPalette } from '../CommandPalette';
 import { ToastContainer } from '../ui/ToastContainer';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { useTheme } from '../../hooks/useTheme';
+import { useTaskNotifications } from '../../hooks/useTaskNotifications';
 import { useAuth } from '../../hooks/useAuth';
 import { useTaskStore } from '../../store/taskStore';
+import { useGoalStore } from '../../store/goalStore';
 import { isSupabaseConfigured } from '../../lib/supabaseClient';
 
 export function AppLayout() {
   useTheme();
   useKeyboardShortcuts();
+  useTaskNotifications();
 
   const { user } = useAuth();
   const loadRemote = useTaskStore((s) => s.loadRemote);
   const remoteLoaded = useTaskStore((s) => s.remoteLoaded);
   const setCurrentUserId = useTaskStore((s) => s.setCurrentUserId);
+  const loadGoalsRemote = useGoalStore((s) => s.loadRemote);
+  const goalsRemoteLoaded = useGoalStore((s) => s.remoteLoaded);
+  const setGoalsUserId = useGoalStore((s) => s.setCurrentUserId);
 
   useEffect(() => {
     if (!user) return;
-    if (isSupabaseConfigured && !remoteLoaded) {
-      loadRemote(user.id);
-    } else if (!isSupabaseConfigured) {
+    if (isSupabaseConfigured) {
+      if (!remoteLoaded) loadRemote(user.id);
+      if (!goalsRemoteLoaded) loadGoalsRemote(user.id);
+    } else {
       setCurrentUserId(user.id);
+      setGoalsUserId(user.id);
     }
-  }, [user, remoteLoaded, loadRemote, setCurrentUserId]);
+  }, [user, remoteLoaded, loadRemote, setCurrentUserId, goalsRemoteLoaded, loadGoalsRemote, setGoalsUserId]);
 
   return (
     <div className="flex min-h-screen bg-surface-sunken">

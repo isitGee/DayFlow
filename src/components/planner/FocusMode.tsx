@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, Pause, Play, Plus, X } from 'lucide-react';
+import { Check, Coffee, Pause, Play, Plus, X } from 'lucide-react';
 import { useUIStore } from '../../store/uiStore';
 import { useTaskStore } from '../../store/taskStore';
+import { usePlannerStore } from '../../store/plannerStore';
 import { Progress } from '../ui/Progress';
 import { cn } from '../../lib/utils';
 
@@ -14,6 +15,8 @@ function formatClock(totalSeconds: number): string {
   return `${sign}${m}:${s.toString().padStart(2, '0')}`;
 }
 
+type Phase = 'work' | 'break';
+
 export function FocusMode() {
   const focusTaskId = useUIStore((s) => s.focusTaskId);
   const endFocus = useUIStore((s) => s.endFocus);
@@ -21,9 +24,17 @@ export function FocusMode() {
   const tasks = useTaskStore((s) => s.tasks);
   const updateTask = useTaskStore((s) => s.updateTask);
   const completeTask = useTaskStore((s) => s.completeTask);
+  const pomodoro = usePlannerStore((s) => s.settings.pomodoro);
 
   const task = tasks.find((t) => t.id === focusTaskId);
+
+  // elapsedSeconds tracks total *work* time on this task (what gets saved
+  // to task.actualMinutes). phaseElapsedSeconds tracks time within the
+  // current Pomodoro phase and resets on every work<->break switch; it's
+  // unused when Pomodoro is off.
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [phase, setPhase] = useState<Phase>('work');
+  const [phaseElapsedSeconds, setPhaseElapsedSeconds] = useState(0);
   const [paused, setPaused] = useState(false);
   const [justCompleted, setJustCompleted] = useState(false);
   const intervalRef = useRef<number | null>(null);
@@ -31,23 +42,48 @@ export function FocusMode() {
   useEffect(() => {
     if (!task) return;
     setElapsedSeconds((task.actualMinutes || 0) * 60);
+    setPhase('work');
+    setPhaseElapsedSeconds(0);
     setPaused(false);
     setJustCompleted(false);
   }, [task?.id]);
 
   useEffect(() => {
     if (!task || paused || justCompleted) return;
-    intervalRef.current = window.setInterval(() => setElapsedSeconds((s) => s + 1), 1000);
+    intervalRef.current = window.setInterval(() => {
+      setPhaseElapsedSeconds((s) => s + 1);
+      setPhase((currentPhase) => {
+        if (currentPhase === 'work') setElapsedSeconds((s) => s + 1);
+        return currentPhase;
+      });
+    }, 1000);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [task, paused, justCompleted]);
 
+  // Auto-advance Pomodoro phases when the current one's target is hit.
+  useEffect(() => {
+    if (!task || !pomodoro.enabled || justCompleted) return;
+    const targetSeconds = (phase === 'work' ? pomodoro.work : pomodoro.break) * 60;
+    if (phaseElapsedSeconds < targetSeconds) return;
+    if (phase === 'work') {
+      setPhase('break');
+      pushToast({ message: `Pomodoro done. Take a ${pomodoro.break}m break.` });
+    } else {
+      setPhase('work');
+      pushToast({ message: "Break's over — back to it." });
+    }
+    setPhaseElapsedSeconds(0);
+  }, [phaseElapsedSeconds, phase, pomodoro, task, justCompleted, pushToast]);
+
   if (!task) return null;
 
-  const targetSeconds = task.estimatedMinutes * 60;
-  const remaining = targetSeconds - elapsedSeconds;
-  const progressPct = Math.min(100, (elapsedSeconds / targetSeconds) * 100);
+  const targetSeconds = pomodoro.enabled ? (phase === 'work' ? pomodoro.work : pomodoro.break) * 60 : task.estimatedMinutes * 60;
+  const displayElapsed = pomodoro.enabled ? phaseElapsedSeconds : elapsedSeconds;
+  const remaining = targetSeconds - displayElapsed;
+  const progressPct = Math.min(100, (displayElapsed / targetSeconds) * 100);
+  const isBreak = pomodoro.enabled && phase === 'break';
 
   function handleComplete() {
     updateTask(task!.id, { actualMinutes: Math.round(elapsedSeconds / 60) });
@@ -75,13 +111,27 @@ export function FocusMode() {
       </button>
 
       <div className="flex w-full max-w-sm flex-col items-center px-6 text-center">
-        <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Focus</p>
-        <h2 className="mt-3 text-2xl font-semibold text-ink">{task.title}</h2>
+        <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">
+          {isBreak ? 'Break' : 'Focus'}
+        </p>
+        <h2 className="mt-3 text-2xl font-semibold text-ink">{isBreak ? 'Step away for a moment' : task.title}</h2>
+        {pomodoro.enabled && !justCompleted && (
+          <p className="mt-1 flex items-center gap-1.5 text-xs text-ink-faint">
+            {isBreak && <Coffee className="h-3.5 w-3.5" />}
+            {isBreak ? `${pomodoro.break}m break` : `Pomodoro · ${pomodoro.work}m sessions`}
+          </p>
+        )}
 
         <div
           className={cn(
-            'mt-10 flex h-52 w-52 items-center justify-center rounded-full border-4 transition-all',
-            justCompleted ? 'scale-105 border-healthy animate-pop' : remaining < 0 ? 'border-caution' : 'border-accent-500'
+            'mt-8 flex h-52 w-52 items-center justify-center rounded-full border-4 transition-all',
+            justCompleted
+              ? 'scale-105 border-healthy animate-pop'
+              : isBreak
+              ? 'border-caution'
+              : remaining < 0
+              ? 'border-caution'
+              : 'border-accent-500'
           )}
         >
           {justCompleted ? (
@@ -93,10 +143,13 @@ export function FocusMode() {
 
         {!justCompleted && (
           <>
-            <Progress value={progressPct} className="mt-8 w-full" barClassName={remaining < 0 ? 'bg-caution' : undefined} />
+            <Progress value={progressPct} className="mt-8 w-full" barClassName={isBreak || remaining < 0 ? 'bg-caution' : undefined} />
             <p className="mt-2 text-xs text-ink-faint">
-              {remaining >= 0 ? `${Math.round(remaining / 60)}m remaining · ` : 'Over estimate · '}
-              estimated {task.estimatedMinutes}m
+              {pomodoro.enabled
+                ? `${formatMinutesLogged(elapsedSeconds)} logged on this task · estimated ${task.estimatedMinutes}m`
+                : remaining >= 0
+                ? `${Math.round(remaining / 60)}m remaining · estimated ${task.estimatedMinutes}m`
+                : `Over estimate · estimated ${task.estimatedMinutes}m`}
             </p>
 
             <div className="mt-8 flex items-center gap-3">
@@ -130,4 +183,9 @@ export function FocusMode() {
     </div>,
     document.body
   );
+}
+
+function formatMinutesLogged(seconds: number): string {
+  const m = Math.round(seconds / 60);
+  return `${m}m`;
 }

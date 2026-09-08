@@ -17,9 +17,11 @@ export default function Login() {
     setSubmitting(true);
     if (mode === 'signup') {
       await signUp(email, password, name || email.split('@')[0]);
-    } else {
-      await signIn(email, password);
+      setSubmitting(false);
+      navigate('/onboarding');
+      return;
     }
+    await signIn(email, password);
     setSubmitting(false);
     navigate('/app/today');
   }
@@ -119,7 +121,7 @@ export default function Login() {
           className="w-full justify-center"
           onClick={() => {
             signInDemo();
-            navigate('/app/today');
+            navigate('/onboarding');
           }}
         >
           Continue as demo user

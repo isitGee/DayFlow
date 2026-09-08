@@ -33,6 +33,7 @@ interface TimelineProps {
 }
 
 export function Timeline({ date, tasks, events }: TimelineProps) {
+  const allTasks = useTaskStore((s) => s.tasks);
   const scheduleTask = useTaskStore((s) => s.scheduleTask);
   const completeTask = useTaskStore((s) => s.completeTask);
   const openTaskDetail = useUIStore((s) => s.openTaskDetail);
@@ -40,8 +41,8 @@ export function Timeline({ date, tasks, events }: TimelineProps) {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [now, setNow] = useState(new Date());
-  const [dragTaskId, setDragTaskId] = useState<string | null>(null);
   const [resizeTaskId, setResizeTaskId] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 30_000);
@@ -68,19 +69,24 @@ export function Timeline({ date, tasks, events }: TimelineProps) {
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();
-    if (!dragTaskId) return;
-    const task = tasks.find((t) => t.id === dragTaskId);
+    setDragOver(false);
+    // dataTransfer (rather than component-local state) is what lets a task
+    // dragged from a different Timeline instance — another day in Calendar,
+    // or Today's priorities list — land here even though it started in a
+    // different React tree. See TaskCard.tsx / PrioritiesList.tsx.
+    const draggedId = e.dataTransfer.getData('text/dayflow-task-id');
+    if (!draggedId) return;
+    const task = allTasks.find((t) => t.id === draggedId);
     if (!task) return;
     const duration = task.estimatedMinutes;
     const startOffset = offsetFromClientY(e.clientY);
     const newStart = timeFromOffsetMinutes(new Date(date), startOffset);
     const newEnd = new Date(newStart.getTime() + duration * 60000);
     scheduleTask(task.id, date, newStart.toISOString(), newEnd.toISOString());
-    setDragTaskId(null);
   }
 
   function handleResizeMove(taskId: string, e: PointerEvent) {
-    const task = tasks.find((t) => t.id === taskId);
+    const task = allTasks.find((t) => t.id === taskId);
     if (!task || !task.scheduledStart) return;
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
@@ -105,13 +111,17 @@ export function Timeline({ date, tasks, events }: TimelineProps) {
   }
 
   return (
-    <div className="rounded-2xl border border-border-subtle bg-surface-raised p-4 shadow-soft">
+    <div className={cn('rounded-2xl border border-border-subtle bg-surface-raised p-4 shadow-soft transition-colors', dragOver && 'border-accent-400 bg-accent-50/40 dark:bg-accent-900/10')}>
       <div className="mb-2 flex items-center gap-2 text-sm font-medium text-ink-muted">
         <Clock className="h-4 w-4" /> Timeline
       </div>
       <div
         ref={containerRef}
-        onDragOver={(e) => e.preventDefault()}
+        onDragOver={(e) => {
+          e.preventDefault();
+          if (!dragOver) setDragOver(true);
+        }}
+        onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
         className="relative select-none"
         style={{ height: (END_HOUR - START_HOUR) * HOUR_HEIGHT }}
@@ -153,7 +163,10 @@ export function Timeline({ date, tasks, events }: TimelineProps) {
             <div
               key={task.id}
               draggable={!isDone}
-              onDragStart={() => setDragTaskId(task.id)}
+              onDragStart={(e) => {
+                e.dataTransfer.setData('text/dayflow-task-id', task.id);
+                e.dataTransfer.effectAllowed = 'move';
+              }}
               onClick={() => openTaskDetail(task.id)}
               className={cn(
                 'group absolute left-14 right-2 cursor-pointer rounded-lg border px-3 py-1.5 shadow-soft transition-shadow',

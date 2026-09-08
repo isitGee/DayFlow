@@ -64,7 +64,7 @@ export default function Today() {
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-ink-faint">Also today</h2>
           <div className="flex flex-col gap-2">
             {otherTasks.map((t) => (
-              <TaskCard key={t.id} task={t} />
+              <TaskCard key={t.id} task={t} enableDrag />
             ))}
           </div>
         </section>

@@ -12,24 +12,33 @@ Lifecycle: **Capture → Plan → Schedule → Focus → Complete → Reflect**
 ## Features
 
 - **Today page** — greeting, live daily capacity meter (green/yellow/red),
-  today's top 3 priorities (drag to reorder), and a vertical timeline with a
-  live "now" indicator, drag-to-reschedule, and resize.
+  today's top 3 priorities (drag to reorder, or drag directly onto the
+  timeline to schedule), and a vertical timeline with a live "now"
+  indicator, drag-to-reschedule (including across days in Calendar view),
+  and resize.
 - **Quick add** with a lightweight natural-language parser
   (`"Study networking for two hours tomorrow morning"`) — no AI key required.
 - **Focus mode** — distraction-free full-screen timer with pause/resume/add
-  time/complete, plus optional Pomodoro presets.
+  time/complete, plus a real Pomodoro mode (auto-alternating work/break
+  phases with toast notifications when Settings → Pomodoro is enabled).
 - **Inbox** — capture now, organize later, with a one-click "Plan my inbox".
-- **Calendar** — Day / 3-Day / Week views built on the same timeline engine.
+- **Calendar** — Day / 3-Day / Week views built on the same timeline engine;
+  drag a task from one day's column to another to reschedule it.
 - **Projects & Goals** — progress bars, task rollups, daily/weekly/monthly goals.
 - **Analytics** — focus time, completion rate, planned-vs-actual, and project
   distribution charts with a few plain-language insights.
 - **End-of-day shutdown & review** — see what's done, decide what moves to
   tomorrow, and answer three short reflection prompts.
+- **Notifications** — upcoming/starting/overdue task alerts (in-app feed +
+  optional real browser notifications), toggled in Settings.
 - **Command palette** (`⌘K` / `Ctrl+K`), keyboard shortcuts (`N`, `T`, `I`,
   `C`, `G`), light/dark theme, and a fully responsive mobile layout with
   bottom nav + floating quick-capture.
+- **Full onboarding** — welcome → focus areas → working hours → planning
+  preference → first task → live preview of your first generated plan.
 - **Demo mode by default** — the whole app works with realistic sample data
-  and browser-local storage, no backend required.
+  and browser-local storage, no backend required. Optionally connect a real
+  Supabase project (auth + Postgres) — see below.
 
 ## Tech stack
 
@@ -130,13 +139,16 @@ extended or swapped without changing any component.
 
 ## Roadmap
 
-- Real Supabase-backed `taskService` / `authService` implementations
+- Calendar events (`calendar_events`) aren't synced to Supabase yet — same
+  pattern as `taskStore`/`goalStore` would apply
+- Notifications only fire while the tab is open; a service worker would let
+  them fire in the background
 - Multi-session scheduling for large tasks
-- Real push/email notifications
 - Recurring tasks and recurring goals
 - A real AI provider behind `AIServiceProvider` (schedule generation, task
   breakdown, natural-language parsing with actual language understanding)
-- Automated tests for capacity math, overload detection, and the NLP parser
+- More automated tests, including component-level coverage for Focus Mode's
+  Pomodoro phase transitions
 
 ## Product philosophy
 

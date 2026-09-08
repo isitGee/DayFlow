@@ -6,6 +6,7 @@ import { DEMO_EVENTS, DEMO_GOALS, DEMO_PROJECTS, DEMO_TASKS } from '../lib/demoD
 import { uid } from '../lib/utils';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
 import * as taskService from '../services/taskService';
+import * as reviewService from '../services/reviewService';
 
 /**
  * The store is the single source of truth for the UI in both modes:
@@ -175,6 +176,7 @@ export const useTaskStore = create<TaskStoreState>()(
       saveReview: (review) => {
         const r: DailyReview = { ...review, id: uid('review') };
         set((s) => ({ reviews: [...s.reviews.filter((x) => x.date !== review.date), r] }));
+        if (isSupabaseConfigured) reviewService.upsertReviewRemote(r, get().currentUserId).catch((err) => syncError('saveReview', err));
       },
 
       resetDemoData: () => set({ tasks: DEMO_TASKS, projects: DEMO_PROJECTS, goals: DEMO_GOALS, events: DEMO_EVENTS, reviews: [] }),

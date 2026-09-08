@@ -8,9 +8,10 @@ interface TaskCardProps {
   task: Task;
   draggableHandle?: boolean;
   compact?: boolean;
+  enableDrag?: boolean;
 }
 
-export function TaskCard({ task, draggableHandle, compact }: TaskCardProps) {
+export function TaskCard({ task, draggableHandle, compact, enableDrag }: TaskCardProps) {
   const completeTask = useTaskStore((s) => s.completeTask);
   const reopenTask = useTaskStore((s) => s.reopenTask);
   const projects = useTaskStore((s) => s.projects);
@@ -20,9 +21,16 @@ export function TaskCard({ task, draggableHandle, compact }: TaskCardProps) {
 
   return (
     <div
+      draggable={enableDrag && !isDone}
+      onDragStart={(e) => {
+        if (!enableDrag) return;
+        e.dataTransfer.setData('text/dayflow-task-id', task.id);
+        e.dataTransfer.effectAllowed = 'move';
+      }}
       className={cn(
         'group flex items-center gap-3 rounded-xl border border-border-subtle bg-surface-raised px-3 shadow-soft transition-colors hover:border-border',
-        compact ? 'py-2' : 'py-3'
+        compact ? 'py-2' : 'py-3',
+        enableDrag && !isDone && 'cursor-grab active:cursor-grabbing'
       )}
     >
       {draggableHandle && <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-ink-faint opacity-0 group-hover:opacity-100" />}
