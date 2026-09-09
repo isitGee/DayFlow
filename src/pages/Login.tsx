@@ -112,20 +112,23 @@ export default function Login() {
           </Button>
         )}
 
-        <div className="my-4 flex items-center gap-2 text-xs text-ink-faint">
-          <div className="h-px flex-1 bg-border" /> or <div className="h-px flex-1 bg-border" />
-        </div>
-
-        <Button
-          variant="secondary"
-          className="w-full justify-center"
-          onClick={() => {
-            signInDemo();
-            navigate('/onboarding');
-          }}
-        >
-          Continue as demo user
-        </Button>
+        {isDemoMode && (
+          <>
+            <div className="my-4 flex items-center gap-2 text-xs text-ink-faint">
+              <div className="h-px flex-1 bg-border" /> or <div className="h-px flex-1 bg-border" />
+            </div>
+            <Button
+              variant="secondary"
+              className="w-full justify-center"
+              onClick={() => {
+                signInDemo();
+                navigate('/onboarding');
+              }}
+            >
+              Continue as demo user
+            </Button>
+          </>
+        )}
 
         <p className="mt-5 text-center text-xs text-ink-faint">
           <Link to="/" className="hover:text-ink-muted">← Back to home</Link>

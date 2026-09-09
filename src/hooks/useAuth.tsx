@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
 import * as authService from '../services/authService';
+import { useTaskStore } from '../store/taskStore';
+import { useGoalStore } from '../store/goalStore';
 
 /**
  * AuthProvider / useAuth is provider-agnostic. When VITE_SUPABASE_URL /
@@ -33,6 +35,15 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 const DEMO_STORAGE_KEY = 'dayflow-auth-demo';
 
+// Task/goal stores key every row (local or remote) by "who's logged in
+// right now." That needs to be known the instant a session exists — not
+// only once AppLayout mounts — otherwise anything created before /app
+// (e.g. the first task in Onboarding) gets tagged with the wrong user id.
+function syncStoreUserId(id: string) {
+  useTaskStore.getState().setCurrentUserId(id);
+  useGoalStore.getState().setCurrentUserId(id);
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -60,11 +71,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
         return;
       }
-      setUser({
+      const authedUser = {
         id: session.user.id,
         email: session.user.email ?? '',
         name: (session.user.user_metadata?.name as string) ?? session.user.email?.split('@')[0] ?? 'there',
-      });
+      };
+      setUser(authedUser);
+      syncStoreUserId(authedUser.id);
     }
 
     bootstrap();
@@ -75,6 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const demoUser: AuthUser = { id: 'demo-user', name: 'Alex', email: 'alex@example.com' };
     localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(demoUser));
     setUser(demoUser);
+    syncStoreUserId(demoUser.id);
   }
 
   async function signIn(email: string, password: string) {
@@ -90,6 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     if (authedUser) {
       setUser({ id: authedUser.id, email: authedUser.email ?? '', name: (authedUser.user_metadata?.name as string) ?? email.split('@')[0] });
+      syncStoreUserId(authedUser.id);
     }
   }
 
@@ -106,6 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     if (authedUser) {
       setUser({ id: authedUser.id, email: authedUser.email ?? '', name });
+      syncStoreUserId(authedUser.id);
     }
   }
 

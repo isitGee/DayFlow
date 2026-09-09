@@ -1,6 +1,7 @@
 import { usePlannerStore } from '../store/plannerStore';
 import { useUIStore } from '../store/uiStore';
 import { useTaskStore } from '../store/taskStore';
+import { useAuth } from '../hooks/useAuth';
 import { Button } from '../components/ui/Button';
 import { cn } from '../lib/utils';
 
@@ -14,6 +15,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 export default function Settings() {
+  const { isDemoMode, signOut } = useAuth();
   const settings = usePlannerStore((s) => s.settings);
   const updateSettings = usePlannerStore((s) => s.updateSettings);
   const theme = useUIStore((s) => s.theme);
@@ -148,20 +150,27 @@ export default function Settings() {
         </div>
       </Section>
 
-      <Section title="Demo data">
-        <p className="mb-3 text-sm text-ink-muted">
-          DAYFLOW is running in local demo mode — everything is stored in your browser. Reset if things get messy.
-        </p>
-        <Button
-          variant="secondary"
-          onClick={() => {
-            resetDemoData();
-            pushToast({ message: 'Demo data reset.' });
-          }}
-        >
-          Reset demo data
-        </Button>
-      </Section>
+      {isDemoMode ? (
+        <Section title="Demo data">
+          <p className="mb-3 text-sm text-ink-muted">
+            DAYFLOW is running in local demo mode — everything is stored in your browser. Reset if things get messy.
+          </p>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              resetDemoData();
+              pushToast({ message: 'Demo data reset.' });
+            }}
+          >
+            Reset demo data
+          </Button>
+        </Section>
+      ) : (
+        <Section title="Account">
+          <p className="mb-3 text-sm text-ink-muted">Signed in with a real DAYFLOW account. Your data is stored in your own database, not this browser.</p>
+          <Button variant="secondary" onClick={() => signOut()}>Sign out</Button>
+        </Section>
+      )}
     </div>
   );
 }
