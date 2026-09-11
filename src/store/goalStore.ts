@@ -17,6 +17,7 @@ interface GoalStoreState {
 
   setCurrentUserId: (id: string) => void;
   loadRemote: (userId: string) => Promise<void>;
+  resetRemote: () => void;
 
   addGoal: (g: Omit<Goal, 'id' | 'progress' | 'linkedTaskIds'>) => void;
   updateProgress: (id: string, progress: number) => void;
@@ -26,11 +27,13 @@ interface GoalStoreState {
 export const useGoalStore = create<GoalStoreState>()(
   persist(
     (set, get) => ({
-      goals: DEMO_GOALS,
+      goals: isSupabaseConfigured ? [] : DEMO_GOALS,
       currentUserId: 'demo',
       remoteLoaded: false,
 
       setCurrentUserId: (id) => set({ currentUserId: id }),
+
+      resetRemote: () => set({ goals: [], currentUserId: 'demo', remoteLoaded: false }),
 
       loadRemote: async (userId) => {
         if (!isSupabaseConfigured) return;
@@ -58,6 +61,9 @@ export const useGoalStore = create<GoalStoreState>()(
         if (isSupabaseConfigured) goalService.deleteGoalRemote(id).catch((err) => syncError('deleteGoal', err));
       },
     }),
-    { name: 'dayflow-goals-store' }
+    {
+      name: 'dayflow-goals-store',
+      partialize: (s) => (isSupabaseConfigured ? { currentUserId: s.currentUserId } : { goals: s.goals, currentUserId: s.currentUserId }),
+    }
   )
 );

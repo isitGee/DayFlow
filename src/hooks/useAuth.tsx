@@ -138,6 +138,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (isSupabaseConfigured) await authService.signOut();
     localStorage.removeItem(DEMO_STORAGE_KEY);
     setUser(null);
+    // Clear in-memory task/goal/project data so a different account signing
+    // in next (same browser, no page reload) always re-fetches fresh rather
+    // than briefly showing whatever the previous account had loaded.
+    useTaskStore.getState().resetRemote();
+    useGoalStore.getState().resetRemote();
   }
 
   return (

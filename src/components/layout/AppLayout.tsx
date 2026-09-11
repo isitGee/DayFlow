@@ -24,6 +24,7 @@ export function AppLayout() {
   const { user } = useAuth();
   const loadRemote = useTaskStore((s) => s.loadRemote);
   const remoteLoaded = useTaskStore((s) => s.remoteLoaded);
+  const remoteLoading = useTaskStore((s) => s.remoteLoading);
   const setCurrentUserId = useTaskStore((s) => s.setCurrentUserId);
   const loadGoalsRemote = useGoalStore((s) => s.loadRemote);
   const goalsRemoteLoaded = useGoalStore((s) => s.remoteLoaded);
@@ -39,6 +40,19 @@ export function AppLayout() {
       setGoalsUserId(user.id);
     }
   }, [user, remoteLoaded, loadRemote, setCurrentUserId, goalsRemoteLoaded, loadGoalsRemote, setGoalsUserId]);
+
+  // While a real account's tasks/projects are being fetched from Postgres,
+  // show a spinner rather than letting Today/Inbox/etc. briefly render as
+  // if the account were empty.
+  const waitingOnRemoteData = isSupabaseConfigured && !remoteLoaded && (remoteLoading || !!user);
+
+  if (waitingOnRemoteData) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-surface-sunken">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent-500 border-t-transparent" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-surface-sunken">

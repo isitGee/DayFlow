@@ -4,6 +4,7 @@ import { Moon, Sparkles } from 'lucide-react';
 import { useTaskStore } from '../store/taskStore';
 import { usePlannerStore } from '../store/plannerStore';
 import { useUIStore } from '../store/uiStore';
+import { useAuth } from '../hooks/useAuth';
 import { calculateWorkload } from '../services/scheduleService';
 import { DailyCapacity } from '../components/planner/DailyCapacity';
 import { PrioritiesList } from '../components/planner/PrioritiesList';
@@ -19,7 +20,13 @@ export default function Today() {
   const events = useTaskStore((s) => s.events);
   const settings = usePlannerStore((s) => s.settings);
   const setQuickAddOpen = useUIStore((s) => s.setQuickAddOpen);
+  const { user } = useAuth();
   const [reviewOpen, setReviewOpen] = useState(false);
+
+  // A Settings-page nickname always wins if someone's set one; otherwise
+  // fall back to the name on their actual account rather than a hardcoded
+  // placeholder, so a real signed-up user never sees someone else's name.
+  const displayName = settings.name || user?.name || 'there';
 
   const today = format(new Date(), 'yyyy-MM-dd');
   const tasksToday = useMemo(() => tasks.filter((t) => t.scheduledDate === today), [tasks, today]);
@@ -36,7 +43,7 @@ export default function Today() {
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <h1 className="text-2xl font-semibold text-ink">
-            {greeting()}, {settings.name}
+            {greeting()}, {displayName}
           </h1>
           <p className="mt-1 text-sm text-ink-muted">{format(new Date(), 'EEEE, MMMM d')}</p>
         </div>

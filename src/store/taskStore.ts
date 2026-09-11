@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { addDays, format } from 'date-fns';
-import type { CalendarEvent, DailyReview, Goal, Project, Task } from '../types';
-import { DEMO_EVENTS, DEMO_GOALS, DEMO_PROJECTS, DEMO_TASKS } from '../lib/demoData';
+import type { CalendarEvent, DailyReview, Project, Task } from '../types';
+import { DEMO_EVENTS, DEMO_PROJECTS, DEMO_TASKS } from '../lib/demoData';
 import { uid } from '../lib/utils';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
 import * as taskService from '../services/taskService';
@@ -10,13 +10,18 @@ import * as reviewService from '../services/reviewService';
 
 /**
  * The store is the single source of truth for the UI in both modes:
- *  - Demo mode (default): everything lives here and in localStorage
- *    (via the `persist` middleware below).
- *  - Supabase mode (VITE_SUPABASE_URL set): `loadRemote` replaces local
- *    state with what's in Postgres on sign-in, and every mutation fires a
- *    best-effort write to taskService alongside the local update, so the UI
- *    never waits on the network. Components never talk to taskService
- *    directly.
+ *  - Demo mode (default): seeded with realistic sample data and persisted
+ *    to localStorage (via the `persist` middleware below), since there's no
+ *    backend to be the source of truth instead.
+ *  - Supabase mode (VITE_SUPABASE_URL set): starts EMPTY (no demo seed —
+ *    a new real account should never see sample tasks), and `loadRemote`
+ *    fetches what's actually in Postgres on sign-in. Task/project/event/
+ *    review data is deliberately excluded from localStorage in this mode
+ *    (see `partialize` below) — Postgres is the only source of truth, so
+ *    every page load re-fetches fresh rather than ever risking one
+ *    account's cached data bleeding into another account on a shared
+ *    browser. Every mutation still fires a best-effort write to
+ *    taskService alongside the local (optimistic) update.
  */
 
 function syncError(action: string, err: unknown) {
@@ -29,14 +34,15 @@ function syncError(action: string, err: unknown) {
 interface TaskStoreState {
   tasks: Task[];
   projects: Project[];
-  goals: Goal[];
   events: CalendarEvent[];
   reviews: DailyReview[];
   currentUserId: string;
   remoteLoaded: boolean;
+  remoteLoading: boolean;
 
   setCurrentUserId: (id: string) => void;
   loadRemote: (userId: string) => Promise<void>;
+  resetRemote: () => void;
 
   addTask: (partial: Partial<Task> & { title: string }) => Task;
   updateTask: (id: string, patch: Partial<Task>) => void;
@@ -60,23 +66,27 @@ interface TaskStoreState {
 export const useTaskStore = create<TaskStoreState>()(
   persist(
     (set, get) => ({
-      tasks: DEMO_TASKS,
-      projects: DEMO_PROJECTS,
-      goals: DEMO_GOALS,
-      events: DEMO_EVENTS,
+      tasks: isSupabaseConfigured ? [] : DEMO_TASKS,
+      projects: isSupabaseConfigured ? [] : DEMO_PROJECTS,
+      events: isSupabaseConfigured ? [] : DEMO_EVENTS,
       reviews: [],
       currentUserId: 'demo',
       remoteLoaded: false,
+      remoteLoading: false,
 
       setCurrentUserId: (id) => set({ currentUserId: id }),
 
+      resetRemote: () => set({ tasks: [], projects: [], events: [], reviews: [], currentUserId: 'demo', remoteLoaded: false, remoteLoading: false }),
+
       loadRemote: async (userId) => {
         if (!isSupabaseConfigured) return;
+        set({ remoteLoading: true });
         try {
           const [tasks, projects] = await Promise.all([taskService.fetchTasks(userId), taskService.fetchProjects(userId)]);
-          set({ tasks, projects, currentUserId: userId, remoteLoaded: true });
+          set({ tasks, projects, currentUserId: userId, remoteLoaded: true, remoteLoading: false });
         } catch (err) {
           syncError('loadRemote', err);
+          set({ remoteLoading: false });
         }
       },
 
@@ -179,8 +189,20 @@ export const useTaskStore = create<TaskStoreState>()(
         if (isSupabaseConfigured) reviewService.upsertReviewRemote(r, get().currentUserId).catch((err) => syncError('saveReview', err));
       },
 
-      resetDemoData: () => set({ tasks: DEMO_TASKS, projects: DEMO_PROJECTS, goals: DEMO_GOALS, events: DEMO_EVENTS, reviews: [] }),
+      resetDemoData: () => set({ tasks: DEMO_TASKS, projects: DEMO_PROJECTS, events: DEMO_EVENTS, reviews: [] }),
     }),
-    { name: 'dayflow-demo-store' }
+    {
+      name: 'dayflow-demo-store',
+      // In Supabase mode, Postgres is the only source of truth for this
+      // data — persisting it locally is exactly what let one account's
+      // cached tasks bleed into a different account signed in later on the
+      // same browser. Demo mode still persists everything, since it has no
+      // backend to fall back on.
+      partialize: (s) =>
+        isSupabaseConfigured
+          ? { currentUserId: s.currentUserId }
+          : { tasks: s.tasks, projects: s.projects, events: s.events, reviews: s.reviews, currentUserId: s.currentUserId },
+    }
   )
 );
+

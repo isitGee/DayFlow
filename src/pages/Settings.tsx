@@ -15,7 +15,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 export default function Settings() {
-  const { isDemoMode, signOut } = useAuth();
+  const { user, isDemoMode, signOut } = useAuth();
   const settings = usePlannerStore((s) => s.settings);
   const updateSettings = usePlannerStore((s) => s.updateSettings);
   const theme = useUIStore((s) => s.theme);
@@ -32,8 +32,12 @@ export default function Settings() {
         <input
           value={settings.name}
           onChange={(e) => updateSettings({ name: e.target.value })}
+          placeholder={user?.name || 'Your name'}
           className="w-full max-w-xs rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent-500"
         />
+        {!isDemoMode && (
+          <p className="mt-1.5 text-xs text-ink-faint">Leave blank to use the name on your account ({user?.name}). Set this to show a different name instead.</p>
+        )}
       </Section>
 
       <Section title="Working hours">
